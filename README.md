@@ -1,130 +1,52 @@
-# @mintfolio/theme-api
+# Mintfolio Theme API
 
-The public contract for independent Mintfolio themes. It provides content types,
-declarative manifests, page props, safe search helpers, and article unlocking.
-It contains no host content service, site configuration, layout, or visual styles.
+[Mintfolio](https://github.com/cnflwzh/mintfolio) 的主题公共契约：主题能读取哪些资料、页面会收到什么参数，以及配置清单怎样声明。
 
-Core also exposes these contracts through `@mintfolio/core/theme`, `/astro`, and
-`/search`, and adds shared controllers and optional components. Themes can depend
-on Core alone when they only use those public facades.
+普通站点作者不需要单独使用这个仓库。开发主题时，通常从 @mintfolio/core/theme 和 @mintfolio/core/astro 导入即可，它们会转出这里的契约。
 
-## Entry points
+## 一个最小清单
 
-| Import | Purpose |
-| --- | --- |
-| `@mintfolio/theme-api` | `defineTheme`, `InferSettings`, public content and manifest types |
-| `@mintfolio/theme-api/astro` | `PageProps`, discriminated page data, article body and SEO types |
-| `@mintfolio/theme-api/SeoHead.astro` | Optional head markup rendered with `{seo}` |
-| `@mintfolio/theme-api/search` | Pure filtering and URL state helpers for Core or browser code |
-| `@mintfolio/theme-api/client` | Search re-exports and validated, sanitized browser unlocking |
-| `@mintfolio/theme-api/crypto` | Low-level Web Crypto envelope primitives for the content adapter |
-
-Only the optional Astro component needs Astro. The root and `/search` imports
-have no DOM or Node dependencies. `/client` loads DOMPurify and is intended for
-browser scripts. These explicit exports also work from a packed npm dependency;
-themes do not need a path alias into the host repository.
-
-## Declare a theme
-
-```js
-// theme.mjs
+~~~js
 import { defineTheme } from '@mintfolio/theme-api';
 
 export default defineTheme({
   manifest: {
-    id: 'example', name: 'Example', version: '1.0.0', engine: '^1.0.0',
-    author: 'Theme author', description: 'An independent text-first theme',
+    id: 'paper', name: 'Paper', version: '1.0.0',
+    engine: '^1.0.0', author: 'Your name',
+    description: '一个专注阅读的主题。',
   },
-  capabilities: { search: true, encryptedPosts: true },
   pages: { home: './pages/home.astro', post: './pages/post.astro' },
   settings: {
-    accent: { type: 'color', label: 'Link color', default: '#2255aa' },
-    width: { type: 'number', label: 'Reading width', default: 760, min: 480, max: 1200 },
+    accent: { type: 'color', label: '链接颜色', default: '#2255aa' },
   },
 });
-```
+~~~
 
-`defineTheme` preserves types; it does not replace the host's build-time validator.
-The required `home` and `post` paths resolve relative to the manifest. Optional
-renderers are `page`, `archive`, and `notFound`. Search/tag/category filters share the archive renderer.
-Declaring a renderer or capability does not register routes or enable services.
+engine 对应主题契约版本，不是 Core 的 0.x 包版本。defineTheme 保留类型信息，实际路径和配置值由 Core 在构建时校验。
 
-```astro
----
-import type { PageProps, HomePageData } from '@mintfolio/theme-api/astro';
-import type { InferSettings } from '@mintfolio/theme-api';
-import definition from '../theme.mjs';
+## 入口
 
-type Props = PageProps<InferSettings<typeof definition.settings>, HomePageData>;
-const { theme, page } = Astro.props;
-const tags = await theme.taxonomy.tags();
----
-<main>
-  <h1>{theme.site.title}</h1>
-  <ul>{page.posts.map((post) => <li><a href={post.url}>{post.title}</a></li>)}</ul>
-</main>
-```
+| 导入 | 用途 |
+| --- | --- |
+| @mintfolio/theme-api | 清单、公开内容类型、InferSettings |
+| @mintfolio/theme-api/astro | PageProps、页面数据、正文与 SEO 类型 |
+| @mintfolio/theme-api/search | 纯搜索与 URL 查询参数函数 |
+| @mintfolio/theme-api/client | 浏览器搜索与密码文章解锁 |
+| @mintfolio/theme-api/crypto | 内容适配器使用的底层 Web Crypto 契约 |
+| @mintfolio/theme-api/SeoHead.astro | 可选的 SEO 标签组件 |
 
-Each renderer receives `{theme, page}`. `page.posts` is an array;
-`theme.content.posts(query)` returns `{items, total}`, where `total` precedes
-pagination. Taxonomy services are asynchronous methods. `publishedAt` is an ISO
-string; URLs are provided by Core. Protected post summaries contain only a safe
-description, and passwords or source content are never part of the public DTO.
+主题获得公开 DTO，不接触站点原始配置、文章密码或内容集合。根入口和搜索函数不依赖 DOM，客户端入口面向浏览器。
 
-## Search and URL state
+## 开发与版本
 
-`createSearchEntry(post)` produces normalized title/description/taxonomy strings,
-retaining the original id and URL. Display the original summary, then use
-`searchPosts(index, filters)` or `filterPosts(posts, filters)` to select matches.
-Filtering is case-insensitive; a query is a substring of title or description,
-while tag/category are exact labels. Neither function sorts, mutates or paginates.
-
-`readFiltersFromUrl(url)` reads `q`, `tag`, and `category` without using `window`.
-`writeFiltersToUrl(filters, url)` returns a new URL, preserving unrelated query
-parameters and the hash. Static archive pages apply query filtering in a browser
-script; query strings do not rerun an Astro static page's frontmatter.
-
-## Protected articles
-
-A `PostPageData.body` is either public HTML/headings or an encrypted envelope.
-For a protected body, call
-`unlockArticle(body.payload, passwordInput.value, body.postId)` from the browser.
-The promise returns `{fragment, headings}` only after authenticating ciphertext,
-validating the versioned `{version: 1, html, headings}` content protocol, and
-sanitizing HTML with DOMPurify. Mount the fragment with `replaceChildren` and
-render heading text normally. The low-level `/crypto` decryptor does not sanitize.
-
-Themes own their password form and lifecycle. Clear the input after unlocking,
-clear content and heading references on relock/navigation, and discard pending
-results after disposal. Never store passwords or decrypted content in browser
-storage/history. Secure browser contexts (HTTPS or localhost) are required.
-
-`ArticleUnlockError.code` is one of `UNSUPPORTED_ENVIRONMENT`,
-`INVALID_ENCRYPTED_ARTICLE`, `AUTHENTICATION_FAILED`, or `INVALID_ARTICLE_CONTENT`.
-These errors contain no passwords, plaintext, or nested crypto exceptions.
-
-## Building the package
-
-From this independent repository root, run:
-
-```sh
+~~~sh
 npm ci
 npm test
 npm pack
-```
+~~~
 
-This emits executable ESM and declarations into `dist`. The package includes that
-directory and its standalone Astro helper; theme authors consume only exports.
-Build before packing. The package prepack script compiles before packing.
+当前契约系列为 1.x，与 Core 版本独立。接口变更需要同步类型、调用方与兼容说明。
 
-## 独立仓库开发
+完整定义见 [Theme API 参考](https://github.com/cnflwzh/mintfolio/blob/main/docs/theme-api.md)。从零开发可看 [主题教程](https://github.com/cnflwzh/mintfolio/wiki/Theme-Development) 和 [Starter](https://github.com/cnflwzh/mintfolio-theme-starter)。
 
-公开 DTO、manifest、搜索纯函数和加密契约。源码在 src，所属测试在 tests。这个仓库不依赖 Core 或任何主题。
-
-```sh
-npm ci
-npm test
-npm pack
-```
-
-这个仓库可单独安装，不需要 PersonalSite 或其他源码目录。拆分前历史保留在原 PersonalSite，起点见 MIGRATION.md。
+[参与开发](CONTRIBUTING.md) · [安全问题](SECURITY.md) · [GPL-3.0-only](LICENSE)

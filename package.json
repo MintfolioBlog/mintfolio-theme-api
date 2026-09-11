@@ -1,12 +1,14 @@
 {
   "name": "@mintfolio/theme-api",
-  "version": "1.0.0",
-  "description": "Public, layout-independent contracts and helpers for Mintfolio themes",
+  "version": "1.0.1",
+  "description": "Public types, manifests and content contracts for Mintfolio themes.",
   "type": "module",
   "files": [
     "dist",
     "src/SeoHead.astro",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "exports": {
     ".": {
@@ -54,5 +56,15 @@
   "devDependencies": {
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "license": "GPL-3.0-only",
+  "author": "CNFLWZH",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cnflwzh/mintfolio-theme-api.git"
+  },
+  "homepage": "https://github.com/cnflwzh/mintfolio-theme-api#readme",
+  "bugs": {
+    "url": "https://github.com/cnflwzh/mintfolio-theme-api/issues"
   }
 }
