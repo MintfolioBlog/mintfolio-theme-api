@@ -1,0 +1,19 @@
+---
+import type { SeoData } from '@mintfolio/theme-api/astro';
+
+/** Place in the theme's head. It deliberately adds no layout or visual styles. */
+interface Props {
+  seo: SeoData;
+}
+
+const { seo } = Astro.props;
+---
+<title>{seo.title}</title>
+<meta name="description" content={seo.description} />
+<meta name="robots" content={seo.robots} />
+<link rel="canonical" href={seo.canonical} />
+<meta property="og:title" content={seo.title} />
+<meta property="og:description" content={seo.description} />
+<meta property="og:url" content={seo.canonical} />
+<meta property="og:locale" content={seo.language.replaceAll('-', '_')} />
+{seo.image && <meta property="og:image" content={seo.image} />}
