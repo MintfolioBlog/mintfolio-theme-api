@@ -7,13 +7,34 @@ interface Props {
 }
 
 const { seo } = Astro.props;
+// JSON strings may contain HTML closing tags. Escape before using set:html so
+// article titles cannot terminate the data script and introduce executable HTML.
+const jsonLd = seo.jsonLd ? JSON.stringify(seo.jsonLd)
+  .replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
+  .replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029') : undefined;
 ---
 <title>{seo.title}</title>
 <meta name="description" content={seo.description} />
 <meta name="robots" content={seo.robots} />
 <link rel="canonical" href={seo.canonical} />
+<meta property="og:type" content={seo.type ?? 'website'} />
 <meta property="og:title" content={seo.title} />
 <meta property="og:description" content={seo.description} />
 <meta property="og:url" content={seo.canonical} />
 <meta property="og:locale" content={seo.language.replaceAll('-', '_')} />
+{seo.siteName && <meta property="og:site_name" content={seo.siteName} />}
 {seo.image && <meta property="og:image" content={seo.image} />}
+{seo.image && seo.imageAlt && <meta property="og:image:alt" content={seo.imageAlt} />}
+{seo.publishedAt && <meta property="article:published_time" content={seo.publishedAt} />}
+{seo.modifiedAt && <meta property="article:modified_time" content={seo.modifiedAt} />}
+{seo.authors?.map((author) => <meta name="author" content={author} />)}
+<meta name="twitter:card" content={seo.twitterCard ?? (seo.image ? 'summary_large_image' : 'summary')} />
+<meta name="twitter:title" content={seo.title} />
+<meta name="twitter:description" content={seo.description} />
+{seo.twitterSite && <meta name="twitter:site" content={seo.twitterSite} />}
+{seo.image && <meta name="twitter:image" content={seo.image} />}
+{seo.image && seo.imageAlt && <meta name="twitter:image:alt" content={seo.imageAlt} />}
+{seo.feeds && <link rel="alternate" type="application/rss+xml" title={seo.siteName ?? seo.title} href={seo.feeds.rss} />}
+{seo.feeds && <link rel="alternate" type="application/feed+json" title={seo.siteName ?? seo.title} href={seo.feeds.json} />}
+{seo.feeds?.atom && <link rel="alternate" type="application/atom+xml" title={seo.siteName ?? seo.title} href={seo.feeds.atom} />}
+{jsonLd && <script type="application/ld+json" is:inline set:html={jsonLd} />}

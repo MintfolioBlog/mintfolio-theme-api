@@ -1,6 +1,6 @@
 {
   "name": "@mintfolio/theme-api",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Public types, manifests and content contracts for Mintfolio themes.",
   "type": "module",
   "files": [
@@ -43,7 +43,7 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
-    "dompurify": "^3.4.15"
+    "dompurify": "^3.4.16"
   },
   "peerDependencies": {
     "astro": "^7.3.2"
@@ -61,10 +61,10 @@
   "author": "CNFLWZH",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cnflwzh/mintfolio-theme-api.git"
+    "url": "git+https://github.com/MintfolioBlog/mintfolio-theme-api.git"
   },
-  "homepage": "https://github.com/cnflwzh/mintfolio-theme-api#readme",
+  "homepage": "https://github.com/MintfolioBlog/mintfolio-theme-api#readme",
   "bugs": {
-    "url": "https://github.com/cnflwzh/mintfolio-theme-api/issues"
+    "url": "https://github.com/MintfolioBlog/mintfolio-theme-api/issues"
   }
 }
