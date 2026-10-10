@@ -25,3 +25,17 @@ test('wrong passwords, another article identity and altered ciphertext cannot au
   assert.throws(() => parseEncryptedArticle({ ...payload, iterations: 1 }));
   await assert.rejects(encryptArticle('body', '  ', 'one'));
 });
+
+
+test('untrusted crypto envelopes reject unsupported protocols and truncated or malformed binary fields', async () => {
+  const valid = await encryptArticle('Protected content', 'long-test-password', 'original');
+  assert.equal(parseEncryptedArticle(valid), valid);
+  const invalid = [null, [], { ...valid, version: 2 }, { ...valid, kdf: 'PBKDF2-SHA1' },
+    { ...valid, iterations: 600001 }, { ...valid, salt: Buffer.alloc(15).toString('base64') },
+    { ...valid, iv: Buffer.alloc(11).toString('base64') }, { ...valid, ciphertext: Buffer.alloc(15).toString('base64') },
+    { ...valid, salt: 'not-base64!' }, { ...valid, ciphertext: null }];
+  for (const payload of invalid) {
+    assert.throws(() => parseEncryptedArticle(payload));
+    await assert.rejects(decryptArticle(payload, 'long-test-password', 'original'));
+  }
+});
