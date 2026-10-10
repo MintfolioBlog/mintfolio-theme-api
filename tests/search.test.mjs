@@ -118,3 +118,32 @@ test('URL filter conversion handles Unicode and punctuation while preserving unr
   assert.deepEqual(readFiltersFromUrl('/blog?tag=%E4%B8%AD%E6%96%87'), { q: '', tag: '中文', category: '' });
   assert.deepEqual(readFiltersFromUrl('?q=one+two'), { q: 'one two', tag: '', category: '' });
 });
+
+test('series filters intersect full-text and taxonomy filters while older entries remain valid', () => {
+  const one = { ...publicPost('one', 'Astro guide', '', ['Web'], 'Development'), series: { id: 'Guide', label: 'Guide', url: '/series/Guide', order: 1 } };
+  const two = { ...publicPost('two', 'Astro notes', '', ['Web'], 'Journal'), series: one.series };
+  const legacy = publicPost('legacy', 'Astro legacy', '', ['Web'], 'Development');
+  const posts = [one, two, legacy];
+  const index = posts.map(post => createSearchEntry(post, 'Unique body keyword'));
+  const filters = { series: 'gUiDe', category: 'development', tag: 'web' };
+  assert.deepEqual(filterPosts(posts, filters), [one]);
+  assert.deepEqual(searchPosts(index, { ...filters, q: 'unique' }), [index[0]]);
+  assert.deepEqual(searchWithHighlights(index, { ...filters, q: 'unique' }).map(result => result.entry), [index[0]]);
+  assert.deepEqual(rankSearchResults(index, { series: 'guide' }), index.slice(0, 2));
+  assert.deepEqual(searchPosts(index, { series: 'missing' }), []);
+  assert.deepEqual(searchPosts(index, { series: '' }), index);
+  assert.equal(Object.hasOwn(index[2], 'series'), false);
+  assert.equal(index[0].series, 'Guide');
+});
+
+test('series URL filters round-trip Unicode and clear without altering unrelated state', () => {
+  const original = new URL('https://example.com/blog?source=mail#results');
+  const next = writeFiltersToUrl({ series: ' 中文 & Guide ' }, original);
+  assert.equal(readFiltersFromUrl(next).series, '中文 & Guide');
+  assert.equal(next.searchParams.get('source'), 'mail');
+  assert.equal(next.hash, '#results');
+  assert.equal(original.searchParams.has('series'), false);
+  const cleared = writeFiltersToUrl({ series: '' }, next);
+  assert.equal(cleared.searchParams.has('series'), false);
+  assert.deepEqual(readFiltersFromUrl(cleared), { q: '', tag: '', category: '' });
+});

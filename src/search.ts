@@ -24,6 +24,7 @@ export function createSearchEntry(post: PostSummary, bodyText?: string): SearchE
     description: post.description,
     tags: post.tags.map((tag) => tag.label),
     category: post.category.label,
+    ...(post.series ? { series: post.series.label } : {}),
     // Array.map(createSearchEntry) supplies an index, never article body text.
     ...(!post.protected && typeof bodyText === 'string' && bodyText ? { text: bodyText } : {}),
   };
@@ -47,8 +48,10 @@ function normalizedFields(entry: SearchEntry): Fields {
 function matchesTaxonomy(entry: SearchEntry, filters: Partial<PostFilters>): boolean {
   const tag = (filters.tag ?? '').toLowerCase();
   const category = (filters.category ?? '').toLowerCase();
+  const series = (filters.series ?? '').toLowerCase();
   return (!tag || entry.tags.some((label) => label.toLowerCase() === tag))
-    && (!category || entry.category.toLowerCase() === category);
+    && (!category || entry.category.toLowerCase() === category)
+    && (!series || entry.series?.toLowerCase() === series);
 }
 
 function matchesTerms(fields: Fields, terms: readonly string[]): boolean {
@@ -201,17 +204,18 @@ export function readFiltersFromUrl(input: URL | URLSearchParams | string): PostF
   const params = input instanceof URLSearchParams ? input
     : input instanceof URL ? input.searchParams
     : new URL(input, 'https://mintfolio.invalid').searchParams;
-  return { q: params.get('q') ?? '', tag: params.get('tag') ?? '', category: params.get('category') ?? '' };
+  return { q: params.get('q') ?? '', tag: params.get('tag') ?? '', category: params.get('category') ?? '',
+    ...(params.has('series') ? { series: params.get('series') ?? '' } : {}) };
 }
 
 /**
- * Return a new URL with q/tag/category updated; never mutate the supplied URL.
+ * Return a new URL with q/tag/category/series updated; never mutate the supplied URL.
  * Empty values remove those keys. Unrelated parameters and hash are preserved.
  * Pass an absolute URL (usually new URL(location.href)) to make the origin explicit.
  */
 export function writeFiltersToUrl(filters: Partial<PostFilters>, url: URL): URL {
   const result = new URL(url.href);
-  for (const key of ['q', 'tag', 'category'] as const) {
+  for (const key of ['q', 'tag', 'category', 'series'] as const) {
     const value = (filters[key] ?? '').trim();
     if (value) result.searchParams.set(key, value);
     else result.searchParams.delete(key);

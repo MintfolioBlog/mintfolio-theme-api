@@ -5,7 +5,7 @@
  * content-collection entry, an article password, or protected article text.
  * Themes receive the context as page props; this package imports no host code.
  */
-export const THEME_API_VERSION = '1.1.0';
+export const THEME_API_VERSION = '1.2.0';
 
 /** Image metadata usable by Astro's image pipeline without importing Astro. */
 export interface PublicImage {
@@ -59,12 +59,17 @@ export interface PostSummary {
   wordCount?: number;
   readingMinutes?: number;
   pinned?: boolean;
-  series?: TaxonomyTerm & { order?: number };
+  series?: PostSeries;
   authors?: PublicAuthor[];
+  /** @deprecated Core does not populate per-post analytics. Read theme.site.analytics. */
+  analytics?: AnalyticsConfig;
   seo?: ContentSeo;
   /** True only in an explicitly enabled local development preview. */
   preview?: boolean;
 }
+
+/** A series membership; smaller order values come first, absent values come last. */
+export interface PostSeries extends TaxonomyTerm { order?: number }
 
 /** Per-document search metadata. Canonical must be an absolute HTTP(S) URL. */
 export interface ContentSeo {
@@ -129,6 +134,19 @@ export interface ContactInfo {
   social: string[];
 }
 
+/** Public GA4 settings. The measurement ID is public, never a credential. */
+export interface GoogleAnalyticsConfig {
+  /** GA4 web-stream ID, e.g. G-XXXXXXXXXX; Core validates and trims it. */
+  measurementId: string;
+  /** Defaults to true when configured. False disables collection; dev is always disabled. */
+  enabled?: boolean;
+}
+
+/** Site-owned analytics. Core installs scripts; themes must not initialize trackers. */
+export interface AnalyticsConfig {
+  google?: GoogleAnalyticsConfig;
+}
+
 /** Site content shared unchanged by all themes, without legacy layout options. */
 export interface PublicSite {
   title: string;
@@ -145,6 +163,8 @@ export interface PublicSite {
   seo?: { defaultSocialImage?: string; twitterSite?: string };
   feed?: { limit: number; content: 'summary' | 'full' };
   authors?: PublicAuthor[];
+  /** Informational only: Core owns loading and page-view collection. */
+  analytics?: AnalyticsConfig;
 }
 
 /** A destination supplied by Core. Themes are free to reorder or omit links. */
@@ -159,10 +179,12 @@ export interface PostFilters {
   q: string;
   tag: string;
   category: string;
+  /** Optional for compatibility with 1.1 filters; empty or absent means all series. */
+  series?: string;
 }
 
 /**
- * q matches public full text through Core, ignoring case. tag/category match
+ * q matches public full text through Core, ignoring case. tag/category/series match
  * their display labels, ignoring case. Offset defaults to zero; omitted limit
  * returns every match. Pagination is applied after filtering and sorting.
  */
@@ -191,6 +213,14 @@ export interface SearchEntry {
   tags: string[];
   category: string;
   text?: string;
+  /** Series label when assigned; older index records may omit it. */
+  series?: string;
+}
+
+/** Public search-index.json response. Drafts, scheduled posts and noindex posts are excluded. */
+export interface SearchPayload {
+  posts: PostSummary[];
+  index: SearchEntry[];
 }
 
 /** Inclusive start/exclusive end UTF-16 positions in plain text, for String.slice(). */
@@ -222,7 +252,7 @@ export interface SearchResult<T extends SearchEntry = SearchEntry> {
   snippet: SearchSnippet;
 }
 
-/** Core owns URL encoding and route policy. All return site-relative URLs. */
+/** Core owns URL encoding and deployment-base policy; asset() also accepts external URLs. */
 export interface ThemeUrls {
   home(): string;
   archive(filters?: Partial<PostFilters>): string;
@@ -234,8 +264,14 @@ export interface ThemeUrls {
   sitemap(): string;
   jsonFeed(): string;
   atom(): string;
+  /** Positive page number. A single taxonomy selects its static route; additional filters remain query parameters. */
   archivePage(page: number, filters?: Partial<PostFilters>): string;
   series(label: string): string;
+  /** Same-origin endpoint returning SearchPayload, already prefixed for subdirectory deployment. */
+  searchIndex(): string;
+  robots(): string;
+  /** Prefix root-relative public assets once; leave external and relative URLs unchanged. */
+  asset(value: string): string;
 }
 
 /**
@@ -248,21 +284,39 @@ export interface ThemeContext<S = Record<string, unknown>> {
   site: PublicSite;
   navigation: NavigationLink[];
   settings: S;
-  content: {
-    posts(query?: PostQuery): Promise<PostPage>;
-    post(id: string): Promise<PostSummary | null>;
-    pages(): Promise<PageSummary[]>;
-    related(id: string, limit?: number): Promise<PostSummary[]>;
-  };
-  taxonomy: {
-    tags(): Promise<TaxonomyCount[]>;
-    categories(): Promise<TaxonomyCount[]>;
-    series(): Promise<TaxonomyCount[]>;
-    archives(): Promise<ArchivePeriod[]>;
-  };
+  content: ThemeContent;
+  taxonomy: ThemeTaxonomy;
   urls: ThemeUrls;
-  search: { index(): Promise<SearchEntry[]> };
+  search: ThemeSearch;
 }
+
+/** Render-scoped content services. All ids are collection ids, not overridden slugs or URLs. */
+export interface ThemeContent {
+  /** Filters preserve Core's pinned/newest ordering; offset and limit must be non-negative safe integers. */
+  posts(query?: PostQuery): Promise<PostPage>;
+  /** Unknown or unpublished ids return null, except drafts enabled by explicit local preview. */
+  post(id: string): Promise<PostSummary | null>;
+  /** Only authored Markdown pages; the generated about page is not a collection entry. */
+  pages(): Promise<PageSummary[]>;
+  /** Same visibility as pages(); returns null when the collection id is absent. */
+  page(id: string): Promise<PageSummary | null>;
+  /** Exact series id, sorted by series order then oldest publication date; unknown ids return []. */
+  series(id: string): Promise<PostSummary[]>;
+  /** Published related summaries; default limit 3, non-negative safe integer; unknown ids return []. */
+  related(id: string, limit?: number): Promise<PostSummary[]>;
+}
+
+/** Counts and month groups use the same visible posts as content.posts(), including explicit local preview. */
+export interface ThemeTaxonomy {
+  tags(): Promise<TaxonomyCount[]>;
+  categories(): Promise<TaxonomyCount[]>;
+  series(): Promise<TaxonomyCount[]>;
+  /** Grouped in site.blog.timezone; Core does not generate month archive routes. */
+  archives(): Promise<ArchivePeriod[]>;
+}
+
+/** Public-only search, even in local preview. Protected metadata is safe; protected bodies are absent. */
+export interface ThemeSearch { index(): Promise<SearchEntry[]> }
 
 /** Routed semantic pages. Search and taxonomy filters share the archive renderer. */
 export type PageKind = 'home' | 'post' | 'page' | 'archive' | 'notFound';
@@ -376,11 +430,17 @@ export interface ThemeDefinition<S extends SettingsSchema = SettingsSchema> {
   build?: ThemeBuildRequirements;
 }
 
-/** User-owned build configuration; page override paths are relative to the site root. */
-export interface ThemeConfiguration {
+/** Objects merge recursively with defaults; arrays replace the complete configured list. */
+export type ThemeSettingsInput<S> = {
+  [K in keyof S]?: S[K] extends readonly unknown[] ? S[K]
+    : S[K] extends object ? ThemeSettingsInput<S[K]> : S[K];
+};
+
+/** User-owned build configuration; override paths resolve from the Astro project root (_mintfolio in Core 0.4). */
+export interface ThemeConfiguration<S = Record<string, unknown>> {
   /** Omitted selection uses the lightweight fallback bundled with Core. */
   theme?: string;
-  settings?: Record<string, unknown>;
+  settings?: ThemeSettingsInput<S>;
   overrides?: { pages?: Partial<Record<PageKind, string>> };
 }
 
