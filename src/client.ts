@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { decryptArticle, parseEncryptedArticle } from './crypto.js';
 import type { ArticleContent, ArticleHeading } from './astro.js';
 
-export { createSearchEntry, emptyFilters, filterPosts, readFiltersFromUrl, searchPosts, writeFiltersToUrl } from './search.js';
+export { createSearchEntry, emptyFilters, filterPosts, readFiltersFromUrl, searchPosts, rankSearchResults, searchWithHighlights, writeFiltersToUrl } from './search.js';
 export { parseEncryptedArticle } from './crypto.js';
 
 /** Stable codes allow a theme to supply localized feedback without parsing messages. */

@@ -37,6 +37,16 @@ export interface SeoData {
   canonical: string;
   robots: 'index,follow' | 'noindex,nofollow';
   image?: string;
+  type?: 'website' | 'article';
+  siteName?: string;
+  publishedAt?: string;
+  modifiedAt?: string;
+  imageAlt?: string;
+  authors?: string[];
+  twitterCard?: 'summary' | 'summary_large_image';
+  twitterSite?: string;
+  jsonLd?: Record<string, unknown>;
+  feeds?: { rss: string; json: string; atom?: string };
 }
 
 /** Common fields are retained even when a missing optional renderer uses fallback. */
@@ -60,20 +70,33 @@ export interface PostPageData extends BasePageData {
   body: ArticleBody;
   previous: PostSummary | null;
   next: PostSummary | null;
+  related?: PostSummary[];
+  seriesPosts?: PostSummary[];
 }
 
-/** Static archive HTML is filtered in the browser for query-string navigation. */
+/** Crawlable archive navigation. The first page uses the unsuffixed archive URL. */
+export interface Pagination {
+  current: number; totalPages: number; totalItems: number; pageSize: number;
+  previous: string | null; next: string | null;
+  pages: { number: number; url: string }[];
+}
+
+/** One page of a crawlable archive; browser search independently loads the full public index. */
 export interface ArchivePageData extends BasePageData {
   kind: 'archive';
   posts: PostSummary[];
   filters: PostFilters;
+  pagination?: Pagination;
+  taxonomy?: { kind: 'tag' | 'category' | 'series'; label: string };
 }
 
-/** Version 1 supplies the about page from the shared public profile. */
+/** Standalone Markdown pages carry body; the built-in about page uses the shared profile. */
 export interface StaticPageData extends BasePageData {
   kind: 'page';
   id: string;
   profile: PublicProfile;
+  body?: Extract<ArticleBody, { kind: 'public' }>;
+  updatedAt?: string;
 }
 
 export interface NotFoundPageData extends BasePageData {

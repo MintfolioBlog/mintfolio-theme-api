@@ -5,7 +5,7 @@
  * content-collection entry, an article password, or protected article text.
  * Themes receive the context as page props; this package imports no host code.
  */
-export const THEME_API_VERSION = '1.0.0';
+export const THEME_API_VERSION = '1.1.0';
 
 /** Image metadata usable by Astro's image pipeline without importing Astro. */
 export interface PublicImage {
@@ -55,6 +55,34 @@ export interface PostSummary {
   category: TaxonomyTerm;
   cover?: string | PublicImage;
   protected: boolean;
+  updatedAt?: string;
+  wordCount?: number;
+  readingMinutes?: number;
+  pinned?: boolean;
+  series?: TaxonomyTerm & { order?: number };
+  authors?: PublicAuthor[];
+  seo?: ContentSeo;
+  /** True only in an explicitly enabled local development preview. */
+  preview?: boolean;
+}
+
+/** Per-document search metadata. Canonical must be an absolute HTTP(S) URL. */
+export interface ContentSeo {
+  title?: string;
+  description?: string;
+  image?: string;
+  imageAlt?: string;
+  canonical?: string;
+  noindex?: boolean;
+}
+
+/** Author ids refer to the public site author registry. */
+export interface PublicAuthor { id: string; name: string; url?: string; avatar?: string; bio?: string }
+
+/** Published Markdown page, with no raw source or private frontmatter. */
+export interface PageSummary {
+  id: string; url: string; title: string; description: string;
+  updatedAt?: string; seo?: ContentSeo; preview?: boolean;
 }
 
 /** Public author data; display choices belong in the theme's own settings. */
@@ -113,6 +141,10 @@ export interface PublicSite {
   projects: Project[];
   contact: ContactInfo;
   icp?: string;
+  blog?: { pageSize: number; timezone: string };
+  seo?: { defaultSocialImage?: string; twitterSite?: string };
+  feed?: { limit: number; content: 'summary' | 'full' };
+  authors?: PublicAuthor[];
 }
 
 /** A destination supplied by Core. Themes are free to reorder or omit links. */
@@ -130,7 +162,7 @@ export interface PostFilters {
 }
 
 /**
- * q matches title or public description, ignoring case. tag/category match
+ * q matches public full text through Core, ignoring case. tag/category match
  * their display labels, ignoring case. Offset defaults to zero; omitted limit
  * returns every match. Pagination is applied after filtering and sorting.
  */
@@ -146,9 +178,10 @@ export interface PostPage {
 }
 
 /**
- * Serializable matching data. createSearchEntry() lowercases title, description,
- * tags and category; id/url retain their original values. Display the original
- * PostSummary rather than these normalized values. No article body is indexed.
+ * Serializable plain-text search data. Core may include extracted public body
+ * text; protected article bodies must never be indexed. Matching ignores case,
+ * while original strings are retained for display and highlight coordinates.
+ * Records from older versions with lowercase metadata remain searchable.
  */
 export interface SearchEntry {
   id: string;
@@ -157,6 +190,36 @@ export interface SearchEntry {
   description: string;
   tags: string[];
   category: string;
+  text?: string;
+}
+
+/** Inclusive start/exclusive end UTF-16 positions in plain text, for String.slice(). */
+export interface SearchRange {
+  start: number;
+  end: number;
+}
+
+/** Bounded plain-text excerpt. ranges are relative to text; start/end address the source field. */
+export interface SearchSnippet {
+  field: 'title' | 'description' | 'text';
+  text: string;
+  start: number;
+  end: number;
+  ranges: SearchRange[];
+}
+
+/** Search display options; snippetLength defaults to 160 UTF-16 units, clamped to 32–500. */
+export interface SearchHighlightOptions {
+  snippetLength?: number;
+}
+
+/** Original entry reference, relevance score and safe plain-text highlight data. */
+export interface SearchResult<T extends SearchEntry = SearchEntry> {
+  entry: T;
+  score: number;
+  /** Positions address the original strings in entry, never generated HTML. */
+  matches: Record<'title' | 'description' | 'text', SearchRange[]>;
+  snippet: SearchSnippet;
 }
 
 /** Core owns URL encoding and route policy. All return site-relative URLs. */
@@ -169,12 +232,16 @@ export interface ThemeUrls {
   category(label: string): string;
   rss(): string;
   sitemap(): string;
+  jsonFeed(): string;
+  atom(): string;
+  archivePage(page: number, filters?: Partial<PostFilters>): string;
+  series(label: string): string;
 }
 
 /**
  * Build-time services injected by the host into every renderer. Settings are
- * already validated and defaulted. Calling post() for a draft/missing id returns
- * null; posts() and search.index() include only safe published metadata.
+ * already validated and defaulted. Drafts are visible only in explicit local preview;
+ * search.index() always contains safe published content.
  * Do not serialize this object wholesale: it contains build-time functions.
  */
 export interface ThemeContext<S = Record<string, unknown>> {
@@ -184,10 +251,13 @@ export interface ThemeContext<S = Record<string, unknown>> {
   content: {
     posts(query?: PostQuery): Promise<PostPage>;
     post(id: string): Promise<PostSummary | null>;
+    pages(): Promise<PageSummary[]>;
+    related(id: string, limit?: number): Promise<PostSummary[]>;
   };
   taxonomy: {
     tags(): Promise<TaxonomyCount[]>;
     categories(): Promise<TaxonomyCount[]>;
+    series(): Promise<TaxonomyCount[]>;
     archives(): Promise<ArchivePeriod[]>;
   };
   urls: ThemeUrls;
