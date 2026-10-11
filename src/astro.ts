@@ -1,6 +1,6 @@
 /** Astro-facing page contracts. These add no layout, styles, or client router. */
 import type { EncryptedArticle } from './crypto.js';
-import type { PageKind, PostFilters, PostSummary, PublicProfile, ThemeContext } from './index.js';
+import type { PageKind, PostFilters, PostSummary, PublicProfile, ThemeContext, ThemeDefinition, InferSettings } from './index.js';
 
 export type { PageKind } from './index.js';
 
@@ -97,6 +97,8 @@ export interface StaticPageData extends BasePageData {
   profile: PublicProfile;
   body?: Extract<ArticleBody, { kind: 'public' }>;
   updatedAt?: string;
+  /** True only for a draft Markdown page rendered by explicit local preview. */
+  preview?: boolean;
 }
 
 export interface NotFoundPageData extends BasePageData {
@@ -115,3 +117,10 @@ export interface PageProps<S = Record<string, unknown>, P extends PageData = Pag
   theme: ThemeContext<S>;
   page: P;
 }
+
+/** Resolve a renderer's discriminated data type from its page kind. */
+export type PageDataFor<K extends PageKind> = Extract<PageData, { kind: K }>;
+
+/** Infer validated settings and page data from the theme manifest, without repeating a settings interface. */
+export type ThemePageProps<D extends ThemeDefinition, K extends PageKind = PageKind> =
+  PageProps<InferSettings<D['settings']>, PageDataFor<K>>;

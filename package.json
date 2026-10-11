@@ -1,6 +1,6 @@
 {
   "name": "@mintfolio/theme-api",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Public types, manifests and content contracts for Mintfolio themes.",
   "type": "module",
   "files": [
