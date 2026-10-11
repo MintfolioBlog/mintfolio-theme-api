@@ -1,12 +1,17 @@
 ---
-import type { SeoData } from '@mintfolio/theme-api/astro';
+import type { SeoData, FaviconLink } from '@mintfolio/theme-api/astro';
 
 /** Place in the theme's head. It deliberately adds no layout or visual styles. */
 interface Props {
   seo: SeoData;
+  /** Used only when Core supplies no site icon; never combined with a site override. */
+  faviconFallback?: string | readonly FaviconLink[];
 }
 
-const { seo } = Astro.props;
+const { seo, faviconFallback } = Astro.props;
+const icons: readonly FaviconLink[] = seo.favicon
+  ? [{ href: seo.favicon }]
+  : typeof faviconFallback === 'string' ? [{ href: faviconFallback }] : faviconFallback ?? [];
 // JSON strings may contain HTML closing tags. Escape before using set:html so
 // article titles cannot terminate the data script and introduce executable HTML.
 const jsonLd = seo.jsonLd ? JSON.stringify(seo.jsonLd)
@@ -14,6 +19,7 @@ const jsonLd = seo.jsonLd ? JSON.stringify(seo.jsonLd)
   .replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029') : undefined;
 ---
 <title>{seo.title}</title>
+{icons.map(icon => <link rel="icon" href={icon.href} type={icon.type} />)}
 <meta name="description" content={seo.description} />
 <meta name="robots" content={seo.robots} />
 <link rel="canonical" href={seo.canonical} />

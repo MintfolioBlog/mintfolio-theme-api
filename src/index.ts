@@ -5,7 +5,7 @@
  * content-collection entry, an article password, or protected article text.
  * Themes receive the context as page props; this package imports no host code.
  */
-export const THEME_API_VERSION = '1.2.0';
+export const THEME_API_VERSION = '1.3.0';
 
 /** Image metadata usable by Astro's image pipeline without importing Astro. */
 export interface PublicImage {
@@ -149,6 +149,8 @@ export interface AnalyticsConfig {
 
 /** Site content shared unchanged by all themes, without legacy layout options. */
 export interface PublicSite {
+  /** Optional site-owned icon URL, normalized with the deployment base by Core. */
+  favicon?: string;
   title: string;
   description: string;
   url: string;

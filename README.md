@@ -130,3 +130,18 @@ const [tags, categories] = await Promise.all([
 设置统一放在 `_mintfolio/theme.config.mjs` 的 settings。主题可在 package.json 声明 `mintfolio.configTemplate`，Core 的 `mintfolio theme use` 会复制模板对象及注释并备份旧配置，`theme init` 仅在 settings 为空时填充。主题不应自行读写宿主配置；旧 `theme-<id>.config.mjs` 已不作为站点运行时设置文件。
 
 浏览器交互从 `@mintfolio/core/client` 导入 `onPage`，在 setup 中使用 `scope.signal` 绑定事件，并用 `scope.add(controller.dispose)` 注册控制器清理，以支持 Astro 页面切换和 BFCache。解锁后正文、目录和密码不可持久化，离开页面或重新锁定时必须清除。SDK 本身不依赖 Core；完整的 DOM 控制器属于 Core 的公共门面，不要从其 src 私有路径导入。
+
+## 站点 favicon 契约
+
+Core 0.4.1 将站点配置 `site.favicon` 验证、规范化并补上部署路径后，提供为 `theme.site.favicon` 和所有页面的 `page.seo.favicon`。Theme API 1.3 的 `SeoHead` 新增可选 `faviconFallback` 属性，接受 URL 字符串或只读 `FaviconLink[]`（`{ href, type? }`）。配置了站点图标时只渲染该图标；未配置时才渲染主题提供的默认图标列表。
+
+~~~astro
+---
+import SeoHead from '@mintfolio/core/components/SeoHead.astro';
+import defaultIcon from '../assets/favicon.svg?url';
+const { page } = Astro.props;
+---
+<SeoHead seo={page.seo} faviconFallback={defaultIcon} />
+~~~
+
+无需主题读取宿主配置或自行拼接 base，也不要再额外输出固定的 `link rel="icon"`。内置 Minimal 和七个主题已接入；Verdant 原有 SVG/ICO 组合仍用于默认回退。使用此能力的主题声明 `engine: '^1.3.0'` 和 Core peerDependency `^0.4.1`。

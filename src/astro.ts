@@ -29,8 +29,13 @@ export type ArticleBody =
   | { kind: 'public'; html: string; headings: ArticleHeading[] }
   | { kind: 'protected'; postId: string; payload: EncryptedArticle };
 
+/** One theme-owned fallback icon. A site favicon replaces the entire fallback list. */
+export interface FaviconLink { href: string; type?: string }
+
 /** Core's SEO policy, rendered in a theme's own head with the optional helper. */
 export interface SeoData {
+  /** Shared on every page, including protected pages and fallback renderers. */
+  favicon?: string;
   title: string;
   description: string;
   language: string;
