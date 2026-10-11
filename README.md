@@ -145,3 +145,7 @@ const { page } = Astro.props;
 ~~~
 
 无需主题读取宿主配置或自行拼接 base，也不要再额外输出固定的 `link rel="icon"`。内置 Minimal 和七个主题已接入；Verdant 原有 SVG/ICO 组合仍用于默认回退。使用此能力的主题声明 `engine: '^1.3.0'` 和 Core peerDependency `^0.4.1`。
+
+### 按需加载文章解锁
+
+搜索使用 `@mintfolio/theme-api/search`；加密文章使用 `@mintfolio/theme-api/protected-article`。原 `/client` 入口保持兼容。HTML 清理库只在调用 `unlockArticle` 时加载；解锁和安全清理规则不变。
