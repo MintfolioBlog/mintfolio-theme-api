@@ -60,7 +60,7 @@ AnalyticsConfig 定义可选的 google 配置，GoogleAnalyticsConfig 包含 mea
 
 ## SDK 1.2 与 Core 0.4
 
-使用本节新增服务的主题声明 `manifest.engine: '^1.2.0'`，并将 Core peerDependency 设为 `^0.4.0`。旧的 `^1.1.0` 清单仍可在新 Runtime 加载；需要新增服务时应提高最低契约版本。SDK 与 Core 使用独立版本号。1.2 是本地开发版本，尚未发布 npm。
+使用本节新增服务的主题声明 `manifest.engine: '^1.2.0'`，并将 Core peerDependency 设为 `^0.4.0`。旧的 `^1.1.0` 清单仍可在新 Runtime 加载；需要新增服务时应提高最低契约版本。SDK 与 Core 使用独立版本号。1.2 与 Core 0.4 配套使用。
 
 ### 已有功能与公开接口
 
