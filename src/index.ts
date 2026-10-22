@@ -5,7 +5,7 @@
  * content-collection entry, an article password, or protected article text.
  * Themes receive the context as page props; this package imports no host code.
  */
-export const THEME_API_VERSION = '1.4.0';
+export const THEME_API_VERSION = '1.4.1';
 
 /** Image metadata usable by Astro's image pipeline without importing Astro. */
 export interface PublicImage {
